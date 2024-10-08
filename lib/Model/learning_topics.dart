@@ -2,11 +2,12 @@ import 'package:next_round/Common Components/learner_type.dart';
 
 class LearningTopics {
   String title;
+  String icon;
   List<LearningDetail> learningDetails;
   // List<LearningDetail> intermediateDetails;
   // List<LearningDetail> advanceDetails;
 
-  LearningTopics({ required this.title, required this.learningDetails});
+  LearningTopics({ required this.title, required this.icon, required this.learningDetails});
 }
 
 class LearningDetail {

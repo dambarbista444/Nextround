@@ -27,7 +27,7 @@ class _MyAppState extends State<MyApp> {
 
   static const List<Widget> widgetOptions = [
     MainLandingScreen(),
-    QuestionsBookmarkScreen()
+    BookmarkListScreen()
   ];
 
 
@@ -40,9 +40,9 @@ class _MyAppState extends State<MyApp> {
         bottomNavigationBar: BottomNavigationBar(
           items: const [
             BottomNavigationBarItem(icon: Icon (Icons.menu_book_sharp),
-                label: ""),
+                label: "Learning"),
             BottomNavigationBarItem(icon: Icon (Icons.bookmarks),
-                label: "")
+                label: "Bookmark")
 
           ],
           currentIndex: _selectedIndex,

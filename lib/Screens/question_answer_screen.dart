@@ -1,4 +1,6 @@
 
+import 'dart:ui';
+
 import 'package:next_round/Learning%20Topics/ios_topics.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -8,6 +10,10 @@ import 'package:next_round/Common Components/common_outline_button.dart';
 import 'package:next_round/Common Components/left_aligned_text.dart';
 import 'all_questions_screen.dart';
 import 'package:next_round/Common Components/learner_type.dart';
+import 'package:next_round/Storage/bookmark_service.dart';
+import 'package:next_round/Model/bookmark.dart';
+import 'package:next_round/Common Components/constants.dart';
+
 
 
 
@@ -22,26 +28,33 @@ class QuestionAnswerScreen extends StatefulWidget {
 }
 
 class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
+  final BookmarkService bookmarkService = BookmarkService();
+
+  bool isBookmarked = false;
+  bool isBlurred = false;
+
   LearnerType learnerType = LearnerType.beginner;
 
-  // bool isCategorySelected = false;
-  // bool isBeginnerSelected = true;
-  // bool isIntermediateSelected = false;
-  // bool isAdvancedSelected = false;
-
-  final pageController = PageController(
-    initialPage: 0,
-  );
+  final pageController = PageController(initialPage: 0);
 
   int _currentPage = 1;
 
   List<LearningDetail> filteredDetails = [];
+
 
   @override
   void initState() {
     super.initState();
     // Filter beginner details by default when the screen loads
     filterDetailsByLearnerType(LearnerType.beginner);
+    _checkIfBookmarked();
+  }
+
+  // Toggle blur effect
+  void _toggleBlur(bool value) {
+    setState(() {
+      isBlurred = value;  // Update the blur state
+    });
   }
 
   // Function to filter the learning details based on learner type
@@ -60,6 +73,42 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
     });
   }
 
+  // Check if the current question is bookmarked
+  void _checkIfBookmarked() async {
+    if (filteredDetails.isNotEmpty) {
+      final currentQuestionId = filteredDetails[_currentPage - 1].question;
+      final isAlreadyBookmarked = await bookmarkService.isBookmarked(currentQuestionId);
+      setState(() {
+        isBookmarked = isAlreadyBookmarked;
+      });
+    }
+  }
+
+  // Toggle bookmark status for the current question
+  void _toggleBookmark() async {
+    final currentQuestion = filteredDetails[_currentPage - 1];
+    if (isBookmarked) {
+      // Remove bookmark
+      await bookmarkService.removeBookmark(currentQuestion.question);
+    } else {
+      // Save bookmark
+      await bookmarkService.saveBookmark(
+        Bookmark(
+          question: currentQuestion.question,
+          answer: currentQuestion.answer,
+          example: currentQuestion.example
+        ),
+      );
+    }
+    setState(() {
+      isBookmarked = !isBookmarked;  // Toggle the bookmark state
+    });
+
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(content: Text(isBookmarked ? "Bookmarked!" : "Bookmark removed!")),
+    // );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,11 +118,20 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
         title: Text(widget.title),
 
         actions: [
+          // Toggle switch to control blur
           Transform.scale(
-            scale: 1.5,
+            scale: 0.7,
+            child: Switch(
+              activeColor: Colors.black87,
+              value: isBlurred,
+              onChanged: _toggleBlur, // Toggle blur effect when the switch changes
+            ),
+          ),
+
+          Transform.scale(
+            scale: 1.6,
             child: IconButton(
                 onPressed: () {
-                  print("pressed");
                   Navigator.push(context,
                       MaterialPageRoute(builder: (context) => AllQuestionsListScreen(allQuestions: widget.allDetails,
                         onQuestionTap: (selectedIndex) {
@@ -82,6 +140,7 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
                           filteredDetails = widget.allDetails;
                           learnerType = widget.allDetails[selectedIndex].learnerType;
                           pageController.jumpToPage(selectedIndex);
+                          _checkIfBookmarked();
                         });
                         },
                       ),
@@ -145,12 +204,12 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
                   // it will highlight/show selected to category buttons when pages swipe.
                   learnerType = filteredDetails[currentPage].learnerType;
                   _currentPage = currentPage + 1;
+                  _checkIfBookmarked();
                 });
-            },
+            }, isBlurred: isBlurred,
             ),
           ),
 
-          /// favorite and counter wider goes here
           Padding(
             padding: const EdgeInsets.only(bottom: 40.0, left: 30, right: 15),
             child: Row(
@@ -163,9 +222,10 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
                    ],
                  ),
                 const Spacer(),
-                IconButton(onPressed: () {
-                  // save to favorite
-                }, icon: const Icon(Icons.bookmark_border)),
+                IconButton(onPressed: _toggleBookmark,
+                  icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  color: isBookmarked ? Colors.black : Colors.black54),
+                ),
               ],
             ),
           ),
@@ -174,14 +234,16 @@ class _QuestionAnswerScreenState extends State<QuestionAnswerScreen> {
     );
   }
 }
-// End of manin class
+
 
 class QuestionAndAnswerPageView extends StatelessWidget {
   final List<LearningDetail> details;
   final PageController pageController;
   final Function(int) onPageChanged;
+  final bool isBlurred;
 
-  const QuestionAndAnswerPageView({super.key, required this.details, required this.pageController, required this.onPageChanged});
+
+  const QuestionAndAnswerPageView({super.key, required this.details, required this.pageController, required this.onPageChanged, required this.isBlurred});
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +254,6 @@ class QuestionAndAnswerPageView extends StatelessWidget {
       itemCount: details.length,
       onPageChanged: onPageChanged,
       itemBuilder: (context, index) {
-        // give padding either to whole colum or just questions and anser text and example
         return Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(
@@ -203,23 +264,84 @@ class QuestionAndAnswerPageView extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      LeftAlignedText(text: details[index].answer, textStyle: const TextStyle(fontSize: 16), edgeInsets: const EdgeInsets.only(top: 10.0)),
+                      //LeftAlignedText(text: details[index].answer, textStyle: const TextStyle(fontSize: 16), edgeInsets: const EdgeInsets.only(top: 10.0)),
+                      // Blur the answer and example if isBlurred is true
+                      if (isBlurred)
+                        ClipRect(
+                          child: ImageFiltered(
+                            imageFilter: ImageFilter.blur( sigmaX: 5, sigmaY: 5),
+                            child: LeftAlignedText(
+                              text: details[index].answer,
+                              textStyle: const TextStyle(fontSize: 16),
+                              edgeInsets: const EdgeInsets.only(top: 10.0),
+                            ),
+                          ),
+                        )
+                      else
+                        LeftAlignedText(
+                          text: details[index].answer,
+                          textStyle: const TextStyle(fontSize: 16),
+                          edgeInsets: const EdgeInsets.only(top: 10.0),
+                        ),
+
 
                       const LeftAlignedText(text: "Example:", textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600), edgeInsets: EdgeInsets.only(top: 10.0)),
 
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5.0),
-                        child: Container(
+                      // Padding(
+                      //   padding: const EdgeInsets.only(top: 5.0),
+                      //   child: Container(
+                      //       decoration: BoxDecoration(
+                      //           color: Colors.black54,
+                      //           borderRadius: BorderRadius.circular(5.0)
+                      //       ),
+                      //       child: Padding(
+                      //         padding: const EdgeInsets.all(8.0),
+                      //         child: LeftAlignedText(text: details[index].example, textStyle: const TextStyle(fontSize: 16, color: Colors.white), edgeInsets: const EdgeInsets.only(top: 10.0)),
+                      //       )
+                      //   ),
+                      // )
+
+                      if (isBlurred)
+                        ClipRect(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 5.0),
+                            child: ImageFiltered(
+                              imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: LeftAlignedText(
+                                    text: details[index].example,
+                                    textStyle: const TextStyle(fontSize: 16, color: Colors.white),
+                                    edgeInsets: const EdgeInsets.only(top: 10.0),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5.0),
+                          child: Container(
                             decoration: BoxDecoration(
-                                color: Colors.black54,
-                              borderRadius: BorderRadius.circular(5.0)
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(5.0),
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: LeftAlignedText(text: details[index].example, textStyle: const TextStyle(fontSize: 16, color: Colors.white), edgeInsets: const EdgeInsets.only(top: 10.0)),
-                            )
-                        ),
-                      )
+                              child: LeftAlignedText(
+                                text: details[index].example,
+                                textStyle: const TextStyle(fontSize: 16, color: Colors.white),
+                                edgeInsets: const EdgeInsets.only(top: 10.0),
+                              ),
+                            ),
+                          ),
+                        )
                     ],
                   ),
                 ),

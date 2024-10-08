@@ -2,7 +2,7 @@ import '../../Model/learning_topics.dart';
 import 'package:next_round/Common Components/learner_type.dart';
 
 class AndroidTopics {
-  static List<LearningDetail> details = [
+  static List<LearningDetail> learningDetails = [
     LearningDetail(
         learnerType: LearnerType.beginner,
         question: "What is the Android UI framework?",
@@ -1680,6 +1680,6 @@ android {
         android:pathData="M12,2L2,22h20z" />
 </vector>
 """
-    )
+    ),
   ];
 }

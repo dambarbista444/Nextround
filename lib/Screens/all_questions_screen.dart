@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:next_round/Model/learning_topics.dart';
-import 'package:next_round/Screens/question_answer_screen.dart';
-import 'package:next_round/Learning%20Topics/ios_topics.dart';
+import 'package:next_round/Common Components/constants.dart';
 
 class AllQuestionsListScreen extends StatelessWidget {
   final List<LearningDetail> allQuestions;
@@ -33,7 +32,7 @@ class AllQuestionsListScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 15),
                 child: Text(
                   "${index + 1}.",
-                  style: const TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 16, color: Constants.themeSecondaryColor),
                 ),
               ),
 
